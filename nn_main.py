@@ -21,7 +21,7 @@ y_file = path.abspath("./Y.txt")
 X = np.loadtxt(x_file)
 Y = np.loadtxt(y_file)
 n_samples, n_features = np.shape(X)
-n_target_output, n_of_classes = np.shape(X)
+n_target_output, n_of_classes = np.shape(Y)
 Y = Y.T
 
 # build matrices for B and T and rest
@@ -55,30 +55,45 @@ def build_initial_term_errors():
     return np.array(dataSet_term_erros)
 
 
+def activation_function(T):
+    sig_of_T = 1 / (1 + np.exp(-T))
+    return sig_of_T
+
+
+def compute_CSqErr(real_output, predicted_output):
+    CSqErr = 0
+    squared_err = (predicted_output - real_output) ** 2
+    # sum by column to get one row for both errors summed per prediction
+    sum_of_columns = squared_err.sum(axis=0)
+    CSqErr += sum_of_columns.sum()
+    return CSqErr
+
+
 def forward_propagate(B, Z):
     layers = len(L)
     dataSet_Ts = []
     # first layer which is input
-    dataSet_Ts.append(np.ones((2, 1)))
+    dataSet_Ts.append(np.ones((2, 46)))
 
     for i in range(layers - 1):
+        # matrix multiply
         T_value = B[i].T @ Z[i]
+        # add T to the Ts set
         dataSet_Ts.append(T_value)
-        if (i + 1) < len(L):
-            xx = np.concatenate((1 / (1 + np.exp(dataSet_Ts[i + 1] * -1))), 1)
-            Z[i + 1] = np.concatenate(
-                (1 / (1 + np.exp(dataSet_Ts[i + 1] * -1))), np.ones(n_samples, 1)
-            )
+        layer_bias = np.ones((n_samples, 1)).T
+        if (i + 1) < layers - 1:
+            f_sig = activation_function(dataSet_Ts[i + 1])
+            Z[i + 1] = np.concatenate((f_sig, layer_bias))
         else:
-            Z[i + 1] = 1 / (1 + math.exp(-dataSet_Ts[i + 1]))
+            Z[i + 1] = activation_function(dataSet_Ts[i + 1])
     return np.array(dataSet_Ts)
 
 
 Betas = build_starting_betas()
-print(Betas.shape)
-print()
-print(Betas[0].T.shape)
 Z = build_initial_Zs(X)
-print(Z[0].shape)
 delta = build_initial_term_errors()
-forward_propagate(Betas, Z)
+# This updates Z values and returns T values
+T_values = forward_propagate(Betas, Z)
+CSqErr = compute_CSqErr(Y, Z[-1])
+# normalize err
+CSqErr /= L[-1]
