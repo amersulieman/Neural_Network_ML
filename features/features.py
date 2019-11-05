@@ -6,6 +6,7 @@ data = np.loadtxt(raw_data)
 y_output = data[:, 0]
 features_256 = np.delete(data, 0, axis=1)
 mapped_features = []
+print(y_output)
 np.savetxt("Y.txt", y_output)
 for x in range(features_256.shape[0]):
     print(x)
