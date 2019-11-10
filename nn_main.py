@@ -30,6 +30,7 @@ def build_starting_betas():
     dataSetBetas = np.empty((layers,), dtype=object)
     for layer in range(layers):
         dataSetBetas[layer] = np.random.uniform(low=-0.7, high=0.8, size=(3, 2))
+
     return dataSetBetas
 
 
@@ -114,7 +115,8 @@ def update_weights(betas):
         v2 = np.zeros((1, L[i + 1]))
         D = deltas[i + 1].T
         for m in range(n_samples):
-            v1 = v1 + (weight[:, m] @ D[m,])
+            temp = (D[m, :]).reshape(2, 1)
+            v1 = v1 + (weight[:, m] * temp).T
             v2 = (
                 v2 + D[m,]
             )
@@ -125,11 +127,8 @@ def update_weights(betas):
 
 
 betas = build_starting_betas()
-# print("betas", betas, betas.shape)
 Z = build_initial_Zs(X)
-# print("Z", Z, Z.shape)
 deltas = build_initial_term_errors()
-# print("d", deltas, deltas.shape)
 while (mse > target_mse) and (epoch < max_epoch):
     print("mse =", mse)
     print("epoch = ", epoch)
@@ -149,7 +148,6 @@ while (mse > target_mse) and (epoch < max_epoch):
     if mse < min_error:
         min_error = mse
         min_error_epoch = epoch
-    else:
-        print("WARNING--------")
+
 print(min_error)
 print(min_error_epoch)
