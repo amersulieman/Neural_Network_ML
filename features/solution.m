@@ -7,7 +7,7 @@
 L=[2 20 20 20 10];   % // Defining the layers: Total of 4 layers, # of nodes are 2, 2, 2, 2 respectively from input to output layer
 alpha = 0.2;   % //usually alpha < 0, ranging from 0.1 to 1
 target_mse=0.0001 % // one of the exit condition
-Max_Epoch=2000  % // one of the exit condition
+Max_Epoch=1  % // one of the exit condition
 Min_Error=Inf
 Min_Error_Epoch=-1
 epoch=0;       % // 1 epoch => One forward and backward sweep of the net for each training sample 

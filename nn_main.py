@@ -4,7 +4,7 @@ import os.path as path
 import random as rd
 
 # config values
-L = [2, 2, 2, 2]  # layers
+L = [2, 20, 20, 20, 10]  # layers
 alpha = 0.2
 target_mse = 0.0001
 max_epoch = 10000
@@ -28,18 +28,21 @@ Y = Y.T
 def build_starting_betas():
     layers = len(L) - 1
     dataSetBetas = np.empty((layers,), dtype=object)
-    for layer in range(layers):
-        dataSetBetas[layer] = np.random.uniform(low=-0.7, high=0.8, size=(3, 2))
-
+    dataSetBetas[0] = np.random.uniform(low=-0.7, high=0.8, size=(L[0] + 1, L[1]))
+    for layer in range(1, layers):
+        dataSetBetas[layer] = np.random.uniform(
+            low=-0.7, high=0.8, size=(L[1] + 1, L[1])
+        )
+    dataSetBetas[-1] = np.random.uniform(low=-0.7, high=0.8, size=(L[1] + 1, L[-1]))
     return dataSetBetas
 
 
 def build_initial_Zs(input_data):
     layers = len(L)
-    dataSet_Zs = np.empty((4,), dtype=object)
+    dataSet_Zs = np.empty((layers,), dtype=object)
     for i in range(layers - 1):
-        dataSet_Zs[i] = np.zeros((L[i] + 1, 1))
-    dataSet_Zs[-1] = np.zeros((L[-1], 1))
+        dataSet_Zs[i] = np.zeros((L[i] + 1, n_samples))
+    dataSet_Zs[-1] = np.zeros((L[-1], n_samples))
     # First layer has input data
     dataSet_Zs[0] = np.concatenate((input_data, np.ones((n_samples, 1))), axis=1).T
     return dataSet_Zs
@@ -47,9 +50,9 @@ def build_initial_Zs(input_data):
 
 def build_initial_term_errors():
     layers = len(L)
-    dataSet_term_erros = np.empty((4,), dtype=object)
+    dataSet_term_erros = np.empty((layers,), dtype=object)
     for layer in range(layers):
-        dataSet_term_erros[layer] = np.zeros((2, 46))
+        dataSet_term_erros[layer] = np.zeros((L[layer], n_samples))
     return dataSet_term_erros
 
 
@@ -64,9 +67,9 @@ def compute_CSqErr(real_output, predicted_output):
 
 def forward_propagate(B, Z):
     layers = len(L)
-    dataSet_Ts = np.empty((4,), dtype=object)
+    dataSet_Ts = np.empty((layers,), dtype=object)
     # first layer which is input
-    dataSet_Ts[0] = np.ones((2, 1))
+    dataSet_Ts[0] = np.ones((L[0], 1))
     for i in range(layers - 1):
         dataSet_Ts[i + 1] = B[i].T @ Z[i]
         layer_bias = np.ones((n_samples, 1)).T
@@ -115,7 +118,8 @@ def update_weights(betas):
         v2 = np.zeros((1, L[i + 1]))
         D = deltas[i + 1].T
         for m in range(n_samples):
-            temp = (D[m, :]).reshape(2, 1)
+            temp = (D[m, :]).reshape(L[i + 1], 1)
+            weightinvest = weight[:, m]
             v1 = v1 + (weight[:, m] * temp).T
             v2 = (
                 v2 + D[m,]
@@ -136,10 +140,10 @@ while (mse > target_mse) and (epoch < max_epoch):
     T_values = forward_propagate(betas, Z)
     CSqErr = compute_CSqErr(Y, Z[-1])
     # normalize err
-    CSqErr = CSqErr / 2
+    CSqErr = CSqErr / L[-1]
     compute_delta_term_for_nodes(deltas)
     update_weights(betas)
-    CSqErr = CSqErr / 46
+    CSqErr = CSqErr / n_samples
     mse = CSqErr
     epoch += 1
     error.append(mse)
