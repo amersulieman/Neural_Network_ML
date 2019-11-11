@@ -274,6 +274,10 @@ for layer_run in range(len(layers_to_do)):
         print("tests_accuracy", acc)
     best_mses_per_layers.append([min(error), min(test_msess)])
     print(test_msess)
+
+    """
+        Drawing the figure for mse
+    """
     ax1 = plt.figure(figures_counter).gca()
     figures_counter += 1
     ax1.xaxis.set_major_locator(MaxNLocator(integer=True))
@@ -288,6 +292,9 @@ for layer_run in range(len(layers_to_do)):
     plt.legend(["y = Train MSE", "y = Test MSE"], loc="upper right")
     plt.savefig("Training_Test_MSE_layers{}.png".format(layers_to_do[layer_run]))
 
+    """
+        Drawing the figure for accuracy
+    """
     ax2 = plt.figure(figures_counter).gca()
     figures_counter += 1
     training_accuracy = training_accuracy[:max_drawing]
@@ -301,10 +308,10 @@ for layer_run in range(len(layers_to_do)):
     plt.legend(["y = Train Accuracy", "y = Test Accuracy"], loc="upper left")
     plt.savefig("Training_Test_Accuracy_layers{}.png".format(layers_to_do[layer_run]))
 
-# mse_rows = []
-# for i in range(max_epoch):
-#     mse_rows.append([error[i], test_msess[i]])
 
+"""
+    Drawing The table 
+"""
 fig = plt.figure(figures_counter)
 figures_counter += 1
 # ax = fig.add_subplot(111)
