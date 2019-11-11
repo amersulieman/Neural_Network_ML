@@ -138,6 +138,7 @@ def build_test_Zs(outputs_test):
 
 def test_data(z_test, test_data, test_Nx, test_min_error):
     corect_guesses = 0
+    test_error = []
     for j in range(test_Nx):
         z_test[0] = np.row_stack((test_data[j, :].reshape(2, 1), [1]))
         forward_propagate(betas, z_test, 1)
@@ -197,7 +198,6 @@ y_test = np.loadtxt(y_test)
 _, test_outputs = y_test.shape
 y_test = y_test.T
 z_test = build_test_Zs(test_outputs)
-test_error = []
 test_min_error = math.inf
 test_mse = math.inf
 test_msess = []
@@ -237,6 +237,7 @@ while (mse > target_mse) and (epoch < max_epoch):
     accuracy.append(acc)
     print("accuracy", acc)
 
+print(test_msess)
 plt.plot(epo, error)
 plt.plot(epo, test_msess)
 plt.legend(["y = Train MSE", "y = Test MSE"], loc="upper left")
