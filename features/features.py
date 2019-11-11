@@ -61,35 +61,71 @@ def find_shadded_spots(sample, height, width_start, width_end):
     return shaded
 
 
-fileName = "./train.txt"
-raw_data = open(fileName, "rt")
-data = np.loadtxt(raw_data)
-# Get output column from train data
-y_output = data[:, 0]
-# delete the output column and keep features
-features_256 = np.delete(data, 0, axis=1)
-n_samples, _ = features_256.shape
-mapped_features = []
-# feature mapping
-for i in range(n_samples):
-    print(i)
-    # change row sample to columns and rows
-    sample = features_256[i].reshape((16, 16))
-    # get white spaces count for that sample
-    num_white_space = (sample == -1.0).sum()
-    width, width_start, width_end = find_diminsion(sample, diminsion="width")
-    height, height_start, height_end = find_diminsion(sample, diminsion="height")
-    feature1_ratio = width / height
-    feature2_shaded_at_locations = find_shadded_spots(
-        sample, height, width_start, width_end
-    )
-    mapped_features.append([feature1_ratio, feature2_shaded_at_locations])
+def convert_hotshot(output_data):
+    # list to hold all hotshot data
+    hotshot_array = []
+    for number in output_data:
+        # create array of 10 zeros initially per sample
+        hotshot_initial = np.zeros((1, 10))
+        # sample at the location of the number output gets 1 and rest is zero
+        hotshot_initial[0][int(number)] = 1
+        hotshot_array.append(hotshot_initial)
+    return np.array(hotshot_array)
 
-# save output column to a file
-np.savetxt("Y.txt", y_output)
-new_features_array = np.array(mapped_features)
-feature_matrix = np.matrix(new_features_array)
-with open("X.txt", "wb") as f:
-    for line in feature_matrix:
-        np.savetxt(f, line, fmt="%.2f")
 
+def save_to_file(data, fmt, output_file):
+    # convert array to matrix
+    matrix = np.matrix(data)
+    with open(output_file, "wb") as f:
+        for line in matrix:
+            np.savetxt(f, line, fmt=fmt)
+
+
+def prep_data(fileName):
+    raw_data = open(fileName, "rt")
+    data = np.loadtxt(raw_data)
+    # Get output column from train data
+    y_output = data[:, 0]
+    # delete the output column and keep features
+    features_256 = np.delete(data, 0, axis=1)
+    n_samples, _ = features_256.shape
+    mapped_features = []
+    # feature mapping
+    for i in range(n_samples):
+        # change row sample to columns and rows
+        sample = features_256[i].reshape((16, 16))
+        # get white spaces count for that sample
+        num_white_space = (sample == -1.0).sum()
+        width, width_start, width_end = find_diminsion(sample, diminsion="width")
+        height, height_start, height_end = find_diminsion(sample, diminsion="height")
+        feature1_ratio = width / height
+        feature2_shaded_at_locations = find_shadded_spots(
+            sample, height, width_start, width_end
+        )
+        mapped_features.append([feature1_ratio, feature2_shaded_at_locations])
+    return y_output, mapped_features
+
+
+# prep training data
+print("Training data prep...")
+training_output_data, training_features = prep_data("./train.txt")
+print("Test data prep...")
+testing_output_data, testing_features = prep_data("./test.txt")
+print("Convert training output to hotshot...")
+training_hotshot_output = convert_hotshot(training_output_data)
+print("Convert testing output to hotshot...")
+testing_hotshot_output = convert_hotshot(testing_output_data)
+
+
+# save features of testing and training to files
+print("Saving training features..")
+training_features = np.array(training_features)
+save_to_file(training_features, fmt="%.2f", output_file="training001.txt")
+print("Saving testing features..")
+testing_features = np.array(testing_features)
+save_to_file(testing_features, fmt="%.2f", output_file="testing001.txt")
+# Save output hots of training and testing to files
+print("Saving hotshot training output..")
+save_to_file(training_hotshot_output, fmt="%d", output_file="hotshot_train001.txt")
+print("Saving hotshot testing output..")
+save_to_file(testing_hotshot_output, fmt="%d", output_file="hotshot_test001.txt")
