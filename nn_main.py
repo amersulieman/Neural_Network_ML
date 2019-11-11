@@ -2,9 +2,11 @@ import math
 import numpy as np
 import os.path as path
 import random as rd
-
+import csv
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 import numpy as np
+
 
 # build matrices for B and T and rest
 def build_starting_betas():
@@ -137,12 +139,15 @@ def build_test_Zs(outputs_test):
     return dataSet_Zs
 
 
-def check_correct_prediction(data, output_sample):
+def check_correct_prediction(data, output_sample, typeTest):
     # data is the last z, in training i will have to loop for each one
     maximum_probability = np.amax(data)
     # this gives me where index of hotshot is not zero, which means my number
     number = np.nonzero(output_sample)[0][0]
-    number_probability = data[number][0]
+    if typeTest == "training":
+        number_probability = data[number]
+    else:
+        number_probability = data[number][0]
     if maximum_probability == number_probability:
         return True
 
@@ -154,7 +159,9 @@ def test_data(z_test, test_data, test_Nx, test_min_error):
         z_test[0] = np.row_stack((test_data[j, :].reshape(2, 1), [1]))
         forward_propagate(betas, z_test, 1)
         output_sample = (y_test[:, j]).reshape(L[-1], 1)
-        is_correct = check_correct_prediction(z_test[-1], output_sample)
+        is_correct = check_correct_prediction(
+            z_test[-1], output_sample, typeTest="tests"
+        )
         if is_correct:
             test_correct_guesses += 1
         test_CSqErr = compute_CSqErr(output_sample, z_test[-1])
@@ -169,87 +176,139 @@ def test_data(z_test, test_data, test_Nx, test_min_error):
     return test_min_error, test_correct_guesses
 
 
-# config values
-nodes = 2
-L = [2, nodes, nodes, nodes, 10]  # layers
-alpha = 0.2
-target_mse = 0.0001
-max_epoch = 20
-min_error = math.inf
-min_error_epoch = -1
-epoch = 0  # one epoch is one forward and backward sweep
-mse = math.inf
-error = []
-epo = []
+layers_to_do = [1, 3, 5, 7]
+num_nodes = [20, 30, 50, 70]
+figures_counter = 0
+max_drawing_epo = 200
+for layer_run in range(1):
+    # config values
+    nodes = num_nodes[layer_run]
+    L = [2]
+    for x in range(layers_to_do[layer_run]):
+        L.append(nodes)
+    L.append(10)
+    alpha = 0.2
+    target_mse = 0.0001
+    max_epoch = 400
+    min_error = math.inf
+    min_error_epoch = -1
+    epoch = 0  # one epoch is one forward and backward sweep
+    mse = math.inf
+    error = []
+    epo = []
 
-# load training data
-x_file = path.abspath("./X.txt")
-y_file = path.abspath("./Y.txt")
-Y = np.loadtxt(y_file)
-_, outputs = Y.shape
-X = np.loadtxt(x_file)
-Nx, input_features = X.shape
-layers_length = len(L)
-Y = Y.T
+    # load training data
+    x_file = path.abspath("./X.txt")
+    y_file = path.abspath("./Y.txt")
+    Y = np.loadtxt(y_file)
+    _, outputs = Y.shape
+    X = np.loadtxt(x_file)
+    Nx, input_features = X.shape
+    layers_length = len(L)
+    Y = Y.T
+    training_accuracy = []
+    #################################
+    """
+        Testing data
+    """
+    # LOAD TESTING DATA
+    x_test = path.abspath("./X_test.txt")
+    x_test = np.loadtxt(x_test)
+    test_Nx, test_input_features = x_test.shape
+    y_test = path.abspath("./Y_test.txt")
+    y_test = np.loadtxt(y_test)
+    _, test_outputs = y_test.shape
+    y_test = y_test.T
+    z_test = build_test_Zs(test_outputs)
+    test_min_error = math.inf
+    test_mse = math.inf
+    test_msess = []
+    tests_accuracy = []
 
-#################################
-"""
-    Testing data
-"""
-# LOAD TESTING DATA
-x_test = path.abspath("./X_test.txt")
-x_test = np.loadtxt(x_test)
-test_Nx, test_input_features = x_test.shape
-y_test = path.abspath("./Y_test.txt")
-y_test = np.loadtxt(y_test)
-_, test_outputs = y_test.shape
-y_test = y_test.T
-z_test = build_test_Zs(test_outputs)
-test_min_error = math.inf
-test_mse = math.inf
-test_msess = []
-tests_accuracy = []
+    #################################
 
-#################################
+    betas = build_starting_betas()
+    Z = build_initial_Zs(X)
+    deltas = build_initial_deltas()
+    while (mse > target_mse) and (epoch < max_epoch):
+        total_test_correct_guesses = 0
+        total_training_correct_guesses = 0
+        print("mse =", mse)
+        print("epoch = ", epoch)
+        # This updates Z values and returns T values
+        forward_propagate(betas, Z, Nx)
+        for train_sample in range(Nx):
+            output_sample = (Y[:, train_sample]).reshape(L[-1], 1)
+            training_sample = Z[-1][:, train_sample]
+            is_correct = check_correct_prediction(
+                training_sample, output_sample, typeTest="training"
+            )
+            if is_correct:
+                total_training_correct_guesses += 1
+        train_acc = total_training_correct_guesses / Nx
+        training_accuracy.append(train_acc)
+        CSqErr = compute_CSqErr(Y, Z[-1])
+        # normalize err
+        CSqErr = CSqErr / L[-1]
+        # backward propagate
+        compute_delta_error(deltas)
+        # after knowing better beta values update original ones
+        update_weights(betas)
+        # divide error by number of samples
+        CSqErr = CSqErr / Nx
+        mse = CSqErr
+        epoch += 1
+        error.append(mse)
+        epo.append(epoch)
+        if mse < min_error:
+            min_error = mse
+            min_error_epoch = epoch
 
-betas = build_starting_betas()
-Z = build_initial_Zs(X)
-deltas = build_initial_deltas()
-while (mse > target_mse) and (epoch < max_epoch):
-    total_test_correct_guesses = 0
-    print("mse =", mse)
-    print("epoch = ", epoch)
-    # This updates Z values and returns T values
-    forward_propagate(betas, Z, Nx)
-    CSqErr = compute_CSqErr(Y, Z[-1])
-    # normalize err
-    CSqErr = CSqErr / L[-1]
-    # backward propagate
-    compute_delta_error(deltas)
-    # after knowing better beta values update original ones
-    update_weights(betas)
-    # divide error by number of samples
-    CSqErr = CSqErr / Nx
-    mse = CSqErr
-    epoch += 1
-    error.append(mse)
-    epo.append(epoch)
-    if mse < min_error:
-        min_error = mse
-        min_error_epoch = epoch
+        test_min_error, test_correct_guesses = test_data(
+            z_test, x_test, test_Nx, test_min_error
+        )
+        total_test_correct_guesses += test_correct_guesses
+        acc = total_test_correct_guesses / test_Nx
+        tests_accuracy.append(acc)
+        print("Train accuracy", train_acc)
+        print("tests_accuracy", acc)
 
-    test_min_error, test_correct_guesses = test_data(
-        z_test, x_test, test_Nx, test_min_error
-    )
-    total_test_correct_guesses += test_correct_guesses
-    acc = total_test_correct_guesses / test_Nx
-    tests_accuracy.append(acc)
-    print("tests_accuracy", acc)
+    mse_rows = []
+    for i in range(max_epoch):
+        mse_rows.append([i, error[i], test_msess[i]])
 
-print(test_msess)
-plt.plot(epo, error)
-plt.plot(epo, test_msess)
-plt.legend(["y = Train MSE", "y = Test MSE"], loc="upper left")
-plt.show()
-print(min_error)
-print(min_error_epoch)
+    import csv
+
+    with open("mses_layer{}.csv".format(layers_to_do[layer_run]), "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["Epochs", "Training Mse", "Test Mse"])
+        writer.writerows(mse_rows)
+
+    print(test_msess)
+    ax1 = plt.figure(figures_counter).gca()
+    figures_counter += 1
+    ax1.xaxis.set_major_locator(MaxNLocator(integer=True))
+    error = error[:max_drawing_epo]
+    epo = epo[:max_drawing_epo]
+    plt.plot(epo, error)
+    test_msess = test_msess[:max_drawing_epo]
+    plt.plot(epo, test_msess)
+    plt.title("Training/Test MSE layers {}".format(layers_to_do[layer_run]))
+    plt.xlabel("Epochs")
+    plt.ylabel("MSE")
+    plt.legend(["y = Train MSE", "y = Test MSE"], loc="upper right")
+    plt.savefig("Training_Test_MSE_layers{}.png".format(layers_to_do[layer_run]))
+
+    ax2 = plt.figure(figures_counter).gca()
+    figures_counter += 1
+    training_accuracy = training_accuracy[:max_drawing_epo]
+    plt.plot(epo, training_accuracy)
+    ax2.xaxis.set_major_locator(MaxNLocator(integer=True))
+    tests_accuracy = tests_accuracy[:max_drawing_epo]
+    plt.plot(epo, tests_accuracy)
+    plt.title("Training/Test Accuracy layers{}".format(layers_to_do[layer_run]))
+    plt.xlabel("Epochs")
+    plt.ylabel("Accuracy")
+    plt.legend(["y = Train Accuracy", "y = Test Accuracy"], loc="upper left")
+    plt.savefig("Training_Test_Accuracy_layers{}.png".format(layers_to_do[layer_run]))
+
