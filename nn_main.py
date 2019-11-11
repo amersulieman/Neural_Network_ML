@@ -2,7 +2,6 @@ import math
 import numpy as np
 import os.path as path
 import random as rd
-import csv
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 import numpy as np
@@ -179,7 +178,8 @@ def test_data(z_test, test_data, test_Nx, test_min_error):
 layers_to_do = [1, 3, 5, 7]
 num_nodes = [20, 30, 50, 70]
 figures_counter = 0
-max_drawing_epo = 200
+max_drawing = 200
+best_mses_per_layers = []
 for layer_run in range(len(layers_to_do)):
     # config values
     nodes = num_nodes[layer_run]
@@ -272,26 +272,15 @@ for layer_run in range(len(layers_to_do)):
         tests_accuracy.append(acc)
         print("Train accuracy", train_acc)
         print("tests_accuracy", acc)
-
-    mse_rows = []
-    for i in range(max_epoch):
-        mse_rows.append([i, error[i], test_msess[i]])
-
-    import csv
-
-    with open("mses_layer{}.csv".format(layers_to_do[layer_run]), "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["Epochs", "Training Mse", "Test Mse"])
-        writer.writerows(mse_rows)
-
+    best_mses_per_layers.append([min(error), min(test_msess)])
     print(test_msess)
     ax1 = plt.figure(figures_counter).gca()
     figures_counter += 1
     ax1.xaxis.set_major_locator(MaxNLocator(integer=True))
-    error = error[:max_drawing_epo]
-    epo = epo[:max_drawing_epo]
+    epo = epo[:max_drawing]
+    error = error[:max_drawing]
     plt.plot(epo, error)
-    test_msess = test_msess[:max_drawing_epo]
+    test_msess = test_msess[:max_drawing]
     plt.plot(epo, test_msess)
     plt.title("Training/Test MSE layers {}".format(layers_to_do[layer_run]))
     plt.xlabel("Epochs")
@@ -301,10 +290,10 @@ for layer_run in range(len(layers_to_do)):
 
     ax2 = plt.figure(figures_counter).gca()
     figures_counter += 1
-    training_accuracy = training_accuracy[:max_drawing_epo]
+    training_accuracy = training_accuracy[:max_drawing]
     plt.plot(epo, training_accuracy)
     ax2.xaxis.set_major_locator(MaxNLocator(integer=True))
-    tests_accuracy = tests_accuracy[:max_drawing_epo]
+    tests_accuracy = tests_accuracy[:max_drawing]
     plt.plot(epo, tests_accuracy)
     plt.title("Training/Test Accuracy layers{}".format(layers_to_do[layer_run]))
     plt.xlabel("Epochs")
@@ -312,3 +301,35 @@ for layer_run in range(len(layers_to_do)):
     plt.legend(["y = Train Accuracy", "y = Test Accuracy"], loc="upper left")
     plt.savefig("Training_Test_Accuracy_layers{}.png".format(layers_to_do[layer_run]))
 
+# mse_rows = []
+# for i in range(max_epoch):
+#     mse_rows.append([error[i], test_msess[i]])
+
+fig = plt.figure(figures_counter)
+figures_counter += 1
+# ax = fig.add_subplot(111)
+col_labels = ["Layers", "Training Mse", "Testing Mse"]
+
+table_vals = [
+    [layers_to_do[i], best_mses_per_layers[i][0], best_mses_per_layers[i][1]]
+    for i in range(len(layers_to_do))
+]
+
+# Draw table
+the_table = plt.table(
+    cellText=table_vals, colWidths=[0.3] * 3, colLabels=col_labels, loc="center"
+)
+the_table.auto_set_font_size(False)
+the_table.set_fontsize(24)
+the_table.scale(4, 4)
+
+# Removing ticks and spines enables you to get the figure only with table
+plt.tick_params(axis="x", which="both", bottom=False, top=False, labelbottom=False)
+plt.tick_params(axis="y", which="both", right=False, left=False, labelleft=False)
+for pos in ["right", "top", "bottom", "left"]:
+    plt.gca().spines[pos].set_visible(False)
+plt.savefig(
+    "matplotlib_table_layers{}.png".format(layers_to_do[layer_run]),
+    bbox_inches="tight",
+    pad_inches=0.05,
+)
