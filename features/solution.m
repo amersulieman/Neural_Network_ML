@@ -22,6 +22,7 @@ load Y.txt      % // Target Output
 [Ny,K]=size(Y); % // Ny = # of target output in Y, K= # of class for K classes when K>=3 otherwise, K=2 in this binary case now
 X_test = load("X_test.txt");
 Y_test = load("Y_test.txt");
+Y_test=Y_test'
 test_err = [];
 [N_test_X,P_test] = size(X_test);
 % Optional: Since input and output are kept in different files, it is better to verify the loaded sample size/dimensions.
@@ -142,12 +143,29 @@ while ((mse > target_mse) && (epoch < Max_Epoch))
 
 
     if mse < Min_Error
-	Min_Error=mse;
+	      Min_Error=mse;
         Min_Error_Epoch=epoch;
     end 
     
-   
-     
+  
+     for j=1:N_test_X		
+        test_CSqErr =0;
+         test_Z{1} = [X_test(j,:) 1]';   % Load Inputs with bias=1
+          for i=1:length(L)-1
+                 test_T{i+1} = B{i}' * test_Z{i};
+
+                 if (i+1)<length(L)
+                   test_Z{i+1}=[(1./(1+exp(-test_T{i+1}))) ;1];
+                 else  
+                   test_Z{i+1}=(1./(1+exp(-test_T{i+1}))); 
+                 end 
+          end  % //end of forward propagation 
+          y_temp_out = Y_test(:,j)
+          test_CSqErr= test_CSqErr+sum(sum(((y_temp_out-test_Z{end}).^2),1));   
+          test_CSqErr = test_CSqErr/L(end);  % Normalizing the Error based on the number of output Nodes
+          test_CSqErr= (test_CSqErr) /(N_test_X); 
+          test_err =[test_err test_CSqErr];
+      end
 end % //while_end
 
       Min_Error;

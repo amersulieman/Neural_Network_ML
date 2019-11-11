@@ -2,6 +2,8 @@ import math
 import numpy as np
 import os.path as path
 import random as rd
+import matplotlib.pyplot as plt
+import numpy as np
 
 # build matrices for B and T and rest
 def build_starting_betas():
@@ -57,7 +59,7 @@ def compute_CSqErr(real_output, predicted_output):
     return CSqErr
 
 
-def forward_propagate(B, Z):
+def forward_propagate(B, Z, Nx):
     """
         Forward propagate the network so I can count error
     """
@@ -122,12 +124,49 @@ def update_weights(betas):
         betas[i][-1,] = betas[i][-1,] - (alpha / Nx) * v2
 
 
+def build_test_Zs(outputs_test):
+    """
+        Allocate space for test Z, which is restult of sig function of T
+    """
+    dataSet_Zs = np.empty((layers_length,), dtype=object)
+    for i in range(layers_length):
+        dataSet_Zs[i] = np.zeros((L[i] + 1, 1))
+    # output node Zs
+    dataSet_Zs[-1] = np.zeros((outputs_test, 1))
+    return dataSet_Zs
+
+
+def test_data(z_test, test_data, test_Nx, test_min_error):
+    corect_guesses = 0
+    for j in range(test_Nx):
+        z_test[0] = np.row_stack((test_data[j, :].reshape(2, 1), [1]))
+        forward_propagate(betas, z_test, 1)
+        max_prop = np.amax(z_test[-1])
+        output_sample = (y_test[:, j]).reshape(L[-1], 1)
+        # this gives me where index of hotshot is not zero, which means my number
+        number = np.nonzero(output_sample)[0][0]
+        my_number_probability = z_test[-1][number][0]
+        # if guess at my number is the highest probability it is corrrect guess
+        if max_prop == my_number_probability:
+            corect_guesses += 1
+        test_CSqErr = compute_CSqErr(output_sample, z_test[-1])
+        # normalize err
+        test_CSqErr = test_CSqErr / L[-1]
+        test_CSqErr = test_CSqErr / test_Nx
+        test_error.append(test_CSqErr)
+    test_mse = sum(test_error)
+    test_msess.append(test_mse)
+    if test_mse < test_min_error:
+        test_min_error = test_mse
+    return test_min_error, corect_guesses
+
+
 # config values
-nodes = 20
+nodes = 2
 L = [2, nodes, nodes, nodes, 10]  # layers
 alpha = 0.2
 target_mse = 0.0001
-max_epoch = 200
+max_epoch = 20
 min_error = math.inf
 min_error_epoch = -1
 epoch = 0  # one epoch is one forward and backward sweep
@@ -135,7 +174,7 @@ mse = math.inf
 error = []
 epo = []
 
-# load data
+# load training data
 x_file = path.abspath("./X.txt")
 y_file = path.abspath("./Y.txt")
 Y = np.loadtxt(y_file)
@@ -145,14 +184,36 @@ Nx, input_features = X.shape
 layers_length = len(L)
 Y = Y.T
 
+#################################
+"""
+    Testing data
+"""
+# LOAD TESTING DATA
+x_test = path.abspath("./X_test.txt")
+x_test = np.loadtxt(x_test)
+test_Nx, test_input_features = x_test.shape
+y_test = path.abspath("./Y_test.txt")
+y_test = np.loadtxt(y_test)
+_, test_outputs = y_test.shape
+y_test = y_test.T
+z_test = build_test_Zs(test_outputs)
+test_error = []
+test_min_error = math.inf
+test_mse = math.inf
+test_msess = []
+accuracy = []
+
+#################################
+
 betas = build_starting_betas()
 Z = build_initial_Zs(X)
 deltas = build_initial_deltas()
 while (mse > target_mse) and (epoch < max_epoch):
+    total_correct_guesses = 0
     print("mse =", mse)
     print("epoch = ", epoch)
     # This updates Z values and returns T values
-    forward_propagate(betas, Z)
+    forward_propagate(betas, Z, Nx)
     CSqErr = compute_CSqErr(Y, Z[-1])
     # normalize err
     CSqErr = CSqErr / L[-1]
@@ -170,5 +231,15 @@ while (mse > target_mse) and (epoch < max_epoch):
         min_error = mse
         min_error_epoch = epoch
 
+    test_min_error, correct_guesses = test_data(z_test, x_test, test_Nx, test_min_error)
+    total_correct_guesses += correct_guesses
+    acc = total_correct_guesses / test_Nx
+    accuracy.append(acc)
+    print("accuracy", acc)
+
+plt.plot(epo, error)
+plt.plot(epo, test_msess)
+plt.legend(["y = Train MSE", "y = Test MSE"], loc="upper left")
+plt.show()
 print(min_error)
 print(min_error_epoch)
