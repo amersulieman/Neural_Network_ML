@@ -2,6 +2,7 @@ import math
 import numpy as np
 import os.path as path
 import random as rd
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -136,20 +137,26 @@ def build_test_Zs(outputs_test):
     return dataSet_Zs
 
 
+def check_correct_prediction(data, output_sample):
+    # data is the last z, in training i will have to loop for each one
+    maximum_probability = np.amax(data)
+    # this gives me where index of hotshot is not zero, which means my number
+    number = np.nonzero(output_sample)[0][0]
+    number_probability = data[number][0]
+    if maximum_probability == number_probability:
+        return True
+
+
 def test_data(z_test, test_data, test_Nx, test_min_error):
-    corect_guesses = 0
+    test_correct_guesses = 0
     test_error = []
     for j in range(test_Nx):
         z_test[0] = np.row_stack((test_data[j, :].reshape(2, 1), [1]))
         forward_propagate(betas, z_test, 1)
-        max_prop = np.amax(z_test[-1])
         output_sample = (y_test[:, j]).reshape(L[-1], 1)
-        # this gives me where index of hotshot is not zero, which means my number
-        number = np.nonzero(output_sample)[0][0]
-        my_number_probability = z_test[-1][number][0]
-        # if guess at my number is the highest probability it is corrrect guess
-        if max_prop == my_number_probability:
-            corect_guesses += 1
+        is_correct = check_correct_prediction(z_test[-1], output_sample)
+        if is_correct:
+            test_correct_guesses += 1
         test_CSqErr = compute_CSqErr(output_sample, z_test[-1])
         # normalize err
         test_CSqErr = test_CSqErr / L[-1]
@@ -159,7 +166,7 @@ def test_data(z_test, test_data, test_Nx, test_min_error):
     test_msess.append(test_mse)
     if test_mse < test_min_error:
         test_min_error = test_mse
-    return test_min_error, corect_guesses
+    return test_min_error, test_correct_guesses
 
 
 # config values
@@ -201,7 +208,7 @@ z_test = build_test_Zs(test_outputs)
 test_min_error = math.inf
 test_mse = math.inf
 test_msess = []
-accuracy = []
+tests_accuracy = []
 
 #################################
 
@@ -209,7 +216,7 @@ betas = build_starting_betas()
 Z = build_initial_Zs(X)
 deltas = build_initial_deltas()
 while (mse > target_mse) and (epoch < max_epoch):
-    total_correct_guesses = 0
+    total_test_correct_guesses = 0
     print("mse =", mse)
     print("epoch = ", epoch)
     # This updates Z values and returns T values
@@ -231,11 +238,13 @@ while (mse > target_mse) and (epoch < max_epoch):
         min_error = mse
         min_error_epoch = epoch
 
-    test_min_error, correct_guesses = test_data(z_test, x_test, test_Nx, test_min_error)
-    total_correct_guesses += correct_guesses
-    acc = total_correct_guesses / test_Nx
-    accuracy.append(acc)
-    print("accuracy", acc)
+    test_min_error, test_correct_guesses = test_data(
+        z_test, x_test, test_Nx, test_min_error
+    )
+    total_test_correct_guesses += test_correct_guesses
+    acc = total_test_correct_guesses / test_Nx
+    tests_accuracy.append(acc)
+    print("tests_accuracy", acc)
 
 print(test_msess)
 plt.plot(epo, error)
