@@ -180,7 +180,7 @@ layers_to_do = [1, 3, 5, 7]
 num_nodes = [20, 30, 50, 70]
 figures_counter = 0
 max_drawing_epo = 200
-for layer_run in range(1):
+for layer_run in range(len(layers_to_do)):
     # config values
     nodes = num_nodes[layer_run]
     L = [2]
@@ -189,7 +189,7 @@ for layer_run in range(1):
     L.append(10)
     alpha = 0.2
     target_mse = 0.0001
-    max_epoch = 400
+    max_epoch = 2000
     min_error = math.inf
     min_error_epoch = -1
     epoch = 0  # one epoch is one forward and backward sweep
